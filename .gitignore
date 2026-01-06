@@ -1,0 +1,35 @@
+# General Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Environment variables and secrets
+.env
+.streamlit/secrets.toml
+secrets.toml
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Large model files (if applicable)
+*.pt
+*.pth
+*.onnx
+weights/
+runs/
+
+# Streamlit
+.streamlit/
+!.streamlit/config.toml
