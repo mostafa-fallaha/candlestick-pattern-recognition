@@ -7,44 +7,40 @@ from PIL import Image
 
 st.set_page_config(page_title="Candlestick Pattern Analyzer", layout="wide")
 
-st.title("🕯️ Candlestick Pattern Analyzer")
+st.title("Candlestick Pattern Analyzer")
 
-# Backend configuration
-st.sidebar.header("⚙️ Settings")
+st.sidebar.header("Settings")
 
 # Backend selection
 backend_type = st.sidebar.radio(
     "Select Backend",
-    ["Reasoner (YOLO + Context)", "BLIP (YOLO + Caption)"],
+    ["ViT (YOLO + Context)", "BLIP (YOLO + Caption)"],
     help="Choose which model backend to use for analysis"
 )
 
-# Backend URLs from secrets or defaults
-if backend_type == "Reasoner (YOLO + Context)":
+if backend_type == "ViT (YOLO + Context)":
     BACKEND_URL = st.secrets.get("BACKEND_URL", "http://localhost:8000")
     BACKEND_API_KEY = st.secrets.get("BACKEND_API_KEY", "")
-    st.sidebar.info("📊 Using Reasoner backend: YOLO detection + context-based action reasoning")
+    st.sidebar.info("Using ViT backend: YOLO detection + context-based action reasoning")
 else:
     BACKEND_URL = st.secrets.get("BLIP_BACKEND_URL", "http://localhost:8001")
     BACKEND_API_KEY = st.secrets.get("BLIP_BACKEND_API_KEY", "")
-    st.sidebar.info("🤖 Using BLIP backend: YOLO detection + AI-generated captions")
+    st.sidebar.info("Using BLIP backend: YOLO detection + AI-generated captions")
 
-# Confidence slider
 conf = st.sidebar.slider("YOLO Confidence Threshold", 0.0, 1.0, 0.25, 0.01)
 
-# File uploader
 st.markdown("---")
-uploaded = st.file_uploader("📁 Upload chart image", type=["png", "jpg", "jpeg", "webp"])
+uploaded = st.file_uploader("Upload chart image", type=["png", "jpg", "jpeg", "webp"])
 
 if uploaded:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📥 Input Image")
+        st.subheader("Input Image")
         st.image(uploaded, use_column_width=True)
 
     with col2:
-        st.subheader("📤 Prediction Result")
+        st.subheader("Prediction Result")
         
         with st.spinner("Running inference..."):
             files = {"file": (uploaded.name, uploaded.getvalue(), uploaded.type)}
@@ -74,7 +70,6 @@ if uploaded:
                     if pattern != "None":
                         if backend_type == "BLIP (YOLO + Caption)":
                             # BLIP Backend response
-                            # Decode base64-encoded headers
                             caption_b64 = r.headers.get("X-Caption", "")
                             caption = base64.b64decode(caption_b64).decode("utf-8") if caption_b64 else "No caption generated"
                             
@@ -103,7 +98,6 @@ if uploaded:
                             conf_val = r.headers.get("X-Detection-Conf", "N/A")
                             explanation = r.headers.get("X-Detection-Explanation", "N/A")
                             
-                            # Color the action
                             if action == "BUY":
                                 action_display = f"🟢 **{action}**"
                             elif action == "SELL":

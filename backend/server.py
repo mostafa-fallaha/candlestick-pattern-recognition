@@ -10,11 +10,10 @@ from model import InferenceEngine
 
 YOLO_PATH = os.environ.get("YOLO_PATH", "/weights/yolo.pt")
 REASONER_PATH = os.environ.get("REASONER_PATH", "/weights/reasoner.pt")
-API_KEY = os.environ.get("API_KEY", "")  # set this in RunPod env
+API_KEY = os.environ.get("API_KEY", "")
 
 app = FastAPI(title="Candlestick Reasoner API", docs_url="/docs", redoc_url=None)
 
-# Allow Streamlit to call you (tighten this later if you want)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,27 +39,19 @@ def health():
 
 
 def draw_prediction_on_image(img_bgr: np.ndarray, det: dict) -> np.ndarray:
-    """Draw bounding box and pattern label on the image (YOLO-style)."""
     img = img_bgr.copy()
     x1, y1, x2, y2 = det["bbox_xyxy"]
     
-    # Magenta color (BGR)
     color = (255, 0, 255)
-    
-    # Draw bounding box
     cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
     
-    # Prepare label: pattern + confidence
     pattern = det["pattern"]
     conf = det["yolo_conf"]
     label = f"{pattern} {conf:.2f}"
     
-    # Draw text above bounding box
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.6
     thickness = 1
-    
-    # Position text at top-left of bounding box
     text_x = x1
     text_y = max(30, y1 - 8)
     

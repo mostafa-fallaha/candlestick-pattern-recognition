@@ -6,7 +6,6 @@ import torch.nn as nn
 import timm
 from ultralytics import YOLO
 
-# ---- Your class order (must match training) ----
 CLASSES = ["Spinning Top", "Hikkake Pattern", "Three Outside Up-Down", "Marubozu",
     "Gravestone Doji", "Dragonfly Doji", "Hammer", "Hanging Man",
     "Three Inside Up-Down", "Advance Block", "Upside-Downside Gap Three Methods",
@@ -16,7 +15,7 @@ CLASSES = ["Spinning Top", "Hikkake Pattern", "Three Outside Up-Down", "Marubozu
 ACTIONS = ["HOLD", "BUY", "SELL"]
 id2action = {i:a for i,a in enumerate(ACTIONS)}
 
-# ---- Pattern classification sets ----
+# Pattern classification sets
 BULLISH_ALWAYS = {"Hammer", "Dragonfly Doji"}
 BEARISH_ALWAYS = {"Hanging Man", "Gravestone Doji", "Evening Star", "Advance Block"}
 NEUTRAL_ALWAYS = {"Spinning Top"}
@@ -64,13 +63,11 @@ def estimate_trend_direction(ctx_bgr):
         return "flat"
 
     H, W, _ = ctx_bgr.shape
-    # Use only left portion to capture "prior trend"
     left_W = max(10, int(W * 0.45))
     region = ctx_bgr[:, :left_W, :]
 
-    # non-white mask (background is near white)
     s = region[:,:,0].astype(np.int32) + region[:,:,1].astype(np.int32) + region[:,:,2].astype(np.int32)
-    mask = s < 740  # threshold for non-white
+    mask = s < 740
 
     ys = []
     xs = []
@@ -87,17 +84,14 @@ def estimate_trend_direction(ctx_bgr):
     xs = np.array(xs, dtype=np.float32)
     ys = np.array(ys, dtype=np.float32)
 
-    # smooth a bit
     if len(ys) >= 9:
         k = 9
         pad = k//2
         ypad = np.pad(ys, (pad,pad), mode="edge")
         ys = np.convolve(ypad, np.ones(k)/k, mode="valid")
 
-    # linear fit slope (y increases downward in image!)
     slope = np.polyfit(xs, ys, 1)[0]
 
-    # convert to "trend up/down" in price terms
     eps = 0.03
     if slope > eps:
         return "down"
@@ -113,7 +107,7 @@ def dominant_candle_color(roi_bgr):
         return "unknown"
     hsv = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2HSV)
 
-    # crude red/green thresholds (works for typical chart colors)
+    # crude red/green thresholds
     red1 = cv2.inRange(hsv, (0, 80, 50), (10, 255, 255))
     red2 = cv2.inRange(hsv, (170, 80, 50), (180, 255, 255))
     red = cv2.bitwise_or(red1, red2)
@@ -230,13 +224,9 @@ class InferenceEngine:
         backbone = ckpt.get("backbone", "vit_small_patch16_224")
 
         self.reasoner = TwoBranchReasoner(backbone_name=backbone, num_patterns=len(CLASSES), num_actions=len(ACTIONS))
-        # Strip _orig_mod. prefix if model was saved after torch.compile()
         state_dict = strip_orig_mod_prefix(ckpt["model_state"])
         self.reasoner.load_state_dict(state_dict, strict=True)
         self.reasoner.eval().to(self.device)
-
-        # Note: torch.compile() is disabled as it requires a C compiler
-        # which may not be available in all deployment environments
 
     @torch.no_grad()
     def predict(self, img_bgr: np.ndarray, yolo_conf=0.25, ctx_scale=2.5, size=224):

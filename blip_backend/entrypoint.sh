@@ -5,7 +5,6 @@ echo "=============================================="
 echo "Candlestick YOLO + BLIP Backend Starting"
 echo "=============================================="
 
-# Create weights directory
 mkdir -p /weights
 
 # Download YOLO weights if not present and URL is provided
@@ -18,20 +17,16 @@ fi
 
 # Download BLIP model folder if not present and URL is provided
 # The BLIP model is a HuggingFace checkpoint folder (config.json, model.safetensors, etc.)
-# We expect BLIP_URL to point to a .zip archive containing the model folder
 BLIP_DIR="${BLIP_PATH:-/weights/blip_model}"
 if [ ! -d "$BLIP_DIR" ] || [ -z "$(ls -A $BLIP_DIR 2>/dev/null)" ]; then
     if [ -n "${BLIP_URL}" ]; then
         echo "Downloading BLIP model from Azure Blob Storage..."
         mkdir -p "$BLIP_DIR"
-        
-        # Download as zip and extract
+
         curl -L "${BLIP_URL}" -o /tmp/blip_model.zip
         unzip -o /tmp/blip_model.zip -d "$BLIP_DIR"
         rm /tmp/blip_model.zip
         
-        # If model was extracted into a subdirectory (e.g., epoch_5), move contents up
-        # This handles zip files that contain a single root folder
         SUBDIRS=$(find "$BLIP_DIR" -mindepth 1 -maxdepth 1 -type d)
         SUBDIR_COUNT=$(echo "$SUBDIRS" | wc -l)
         
@@ -53,5 +48,4 @@ echo "=============================================="
 echo "Weights loaded. Starting server on port ${PORT:-8000}"
 echo "=============================================="
 
-# Start the FastAPI server
 exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}

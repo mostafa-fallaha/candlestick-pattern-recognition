@@ -1,11 +1,3 @@
-"""
-FastAPI server for YOLO + BLIP Candlestick Pattern Recognition
-
-Endpoints:
-- GET /health: Health check
-- POST /predict: Run YOLO detection + BLIP captioning on an image
-"""
-
 import os
 import io
 import json
@@ -18,7 +10,6 @@ from fastapi.responses import Response
 
 from model import CandlestickPipeline
 
-# Environment configuration
 YOLO_PATH = os.environ.get("YOLO_PATH", "/weights/yolo.pt")
 BLIP_PATH = os.environ.get("BLIP_PATH", "/weights/blip_model")
 API_KEY = os.environ.get("API_KEY", "")
@@ -30,7 +21,6 @@ app = FastAPI(
     redoc_url=None
 )
 
-# CORS configuration - allow Streamlit and other frontends
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -39,13 +29,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global pipeline instance
 pipeline = None
 
 
 @app.on_event("startup")
 def startup_event():
-    """Initialize the ML pipeline on server startup."""
     global pipeline
     print("=" * 60)
     print("Starting Candlestick YOLO + BLIP Server")
@@ -57,14 +45,12 @@ def startup_event():
 
 
 def check_api_key(x_api_key: str | None):
-    """Validate API key if one is configured."""
     if API_KEY and x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 @app.get("/health")
 def health():
-    """Health check endpoint."""
     return {"ok": True, "model": "yolo+blip"}
 
 
@@ -74,23 +60,8 @@ async def predict(
     conf: float = 0.25,
     x_api_key: str | None = Header(default=None),
 ):
-    """
-    Run YOLO detection + BLIP captioning on an uploaded image.
-    
-    Args:
-        file: Image file to analyze
-        conf: YOLO confidence threshold (0.0 to 1.0)
-        x_api_key: Optional API key for authentication
-    
-    Returns:
-        PNG image with drawn bounding boxes.
-        Response headers contain:
-        - X-Caption: Generated BLIP caption
-        - X-Detections: JSON array of detection info
-    """
     check_api_key(x_api_key)
     
-    # Read and decode image
     data = await file.read()
     arr = np.frombuffer(data, np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
@@ -98,25 +69,19 @@ async def predict(
     if img is None:
         raise HTTPException(status_code=400, detail="Invalid image file")
     
-    # Run the pipeline
     result = pipeline.predict(img, conf_threshold=conf)
     
-    # Encode annotated image as PNG
     _, img_encoded = cv2.imencode(".png", result["annotated_image"])
     
-    # Prepare detection info for headers
-    # Convert numpy types to native Python types for JSON serialization
     detection_info = []
     for det in result["detections"]:
-        bbox = [int(x) for x in det["bbox_xyxy"]]  # Convert int64 to int
+        bbox = [int(x) for x in det["bbox_xyxy"]]
         detection_info.append({
             "pattern": det["class_name"],
             "confidence": float(round(det["confidence"], 3)),
             "bbox": bbox
         })
     
-    # Build response headers
-    # Base64 encode strings that may contain Unicode characters
     caption_b64 = base64.b64encode(result["caption"].encode("utf-8")).decode("ascii")
     detections_b64 = base64.b64encode(json.dumps(detection_info).encode("utf-8")).decode("ascii")
     
@@ -126,7 +91,6 @@ async def predict(
         "X-Detection-Count": str(len(result["detections"])),
     }
     
-    # Add top detection info if available
     if result["detections"]:
         top_det = result["detections"][0]
         headers["X-Detection-Pattern"] = top_det["class_name"]
